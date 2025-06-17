@@ -1,272 +1,162 @@
+├── public/
+│   └── index.html
+├── worker/
+│   └── worker.js
+├── wrangler.toml
+├── .gitignore
+
+---
+
+📄 public/index.html
+```html
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
+  <title>世界要闻聚合</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>自定义导航页</title>
   <style>
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #1a1a1a;
-      background-image: url('images/beijing.png'); /* 背景图片路径 */
-      background-size: cover; /* 背景图片覆盖整个页面 */
-      background-position: center center; /* 背景图片居中 */
-      background-attachment: fixed; /* 背景固定，随着页面滚动不移动 */
-      color: #ffffff;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      height: 100vh;
-    }
-
-    /* 顶部区域 */
-    .header {
-      text-align: center;
-      margin: 50px 0;
-    }
-
-    .time {
-      font-size: 80px;
-      font-weight: bold;
-    }
-
-    .date {
-      font-size: 30px;
-      margin-top: 8px;
-    }
-
-    /* 快捷方式部分 */
-    .quick-links {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 30px;
-      margin: 50px 0; /* 调整快捷方式与其他部分的间距 */
-    }
-
-    .quick-item img {
-      width: 70px;
-      height: 70px;
-      border-radius: 10px;
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-      cursor: pointer;
-    }
-
-    .quick-item img:hover {
-      transform: scale(1.1);
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.8);
-    }
-
-    .quick-item p {
-      text-align: center;
-      margin: 8px 0 0;
-      font-size: 16px;
-      color: #cccccc;
-      font-family: 'Arial', sans-serif; /* 修改字体类型 */
-      font-weight: bold; /* 设置字体粗体 */
-      letter-spacing: 1px; /* 字符间距 */
-    }
-
-    /* 搜索框样式 */
-    .search-bar {
-      margin: 30px 0; /* 调整搜索栏的垂直间距 */
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-    .search-bar input {
-      width: 400px;
-      padding: 12px 20px;
-      border: none;
-      border-radius: 25px 0 0 25px; /* 左侧圆角 */
-      font-size: 16px;
-      outline: none;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-    }
-
-    .search-bar .search-buttons {
-      display: flex;
-      border-radius: 0 25px 25px 0; /* 右侧圆角 */
-      overflow: hidden; /* 修剪子元素溢出 */
-    }
-
-    .search-bar .search-buttons button {
-      padding: 12px 25px;
-      border: none;
-      font-size: 16px;
-      font-weight: bold;
-      cursor: pointer;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-      transition: background-color 0.3s ease;
-      color: #ffffff;
-      outline: none;
-    }
-
-    .search-bar .search-buttons .baidu-btn {
-      background-color: #0078D7;
-    }
-
-    .search-bar .search-buttons .baidu-btn:hover {
-      background-color: #005bb5;
-    }
-
-    .search-bar .search-buttons .google-btn {
-      background-color: #FFA500;
-    }
-
-    .search-bar .search-buttons .google-btn:hover {
-      background-color: #cc8400;
-    }
+    body { font-family: sans-serif; max-width: 800px; margin: auto; padding: 1em; }
+    h1 { text-align: center; }
+    .controls { display: flex; justify-content: space-between; margin-bottom: 1em; }
+    .news { border-bottom: 1px solid #ddd; padding: 1em 0; }
+    .news:last-child { border-bottom: none; }
+    .news h2 { margin: 0; font-size: 1.2em; }
+    .news p { margin: 0.5em 0 0; }
   </style>
 </head>
 <body>
-  <!-- 顶部区域 -->
-  <div class="header">
-    <div class="time" id="time"></div>
-    <div class="date" id="date"></div>
+  <h1>世界要闻聚合</h1>
+  <div class="controls">
+    <select id="country-filter">
+      <option value="">全部国家</option>
+    </select>
+    <select id="sort-mode">
+      <option value="time">按时间排序</option>
+      <option value="country">按国家排序</option>
+    </select>
   </div>
+  <div id="news-list">加载中...</div>
 
-<!-- 快捷方式部分 -->
-  <div class="quick-links">
-    <!-- 百度 -->
-    <div class="quick-item">
-      <img src="images/baidu.png" alt="百度" onclick="openWebsite('https://www.baidu.com')">
-      <p>百度</p>
-    </div>
-    <!-- 谷歌 -->
-    <div class="quick-item">
-      <img src="images/google.png" alt="谷歌" onclick="openWebsite('https://www.google.com')">
-      <p>谷歌</p>
-    </div>
-    <!-- YouTube -->
-    <div class="quick-item">
-      <img src="images/youtube.png" alt="油管" onclick="openWebsite('https://www.youtube.com')">
-      <p>油管</p>
-    </div>
+<script>
+async function loadNews() {
+  const res = await fetch('/api/news');
+  const data = await res.json();
+  const container = document.getElementById('news-list');
+  const filter = document.getElementById('country-filter').value;
+  const sort = document.getElementById('sort-mode').value;
 
+  let items = data;
+  if (filter) items = items.filter(i => i.country === filter);
 
+  if (sort === 'time') items.sort((a, b) => new Date(b.date) - new Date(a.date));
+  if (sort === 'country') items.sort((a, b) => a.country.localeCompare(b.country));
 
-    <div class="quick-item">
-      <img src="images/bili.png" alt="哔哩哔哩" onclick="openWebsite('https://www.bilibili.com/')">
-      <p>哔哩哔哩</p>
-    </div>
-
-
-
-    <div class="quick-item">
-      <img src="images/chat.jpeg" alt="GPT" onclick="openWebsite('https://chatgpt.com/c/e6b57461-0211-404a-bbb0-7f3029ee2221')">
-      <p>GPT</p>
-</div>
-
-
-
-    <div class="quick-item">
-      <img src="images/tongyi.png" alt="通义千问" onclick="openWebsite('https://tongyi.aliyun.com/qianwen/')">
-      <p>通义千问</p>
-    </div>
-
-
-    <div class="quick-item">
-      <img src="images/QQmail.png" alt="QQ邮箱" onclick="openWebsite('https://mail.qq.com')">
-      <p>QQ邮箱</p>
-    </div>
-
-    <div class="quick-item">
-      <img src="images/twitter.jpeg" alt="X (原推特)" onclick="openWebsite('https://x.com/home?lang=zh')">
-      <p>X (推特)</p>
-    </div>
-
-
-
-
-
-
-    <!-- 安娜的日记 -->
-    <div class="quick-item">
-      <img src="images/A.jpg"  alt="安娜日记" onclick="openWebsite('https://tw.annas-archive.org/')">
-      <p>安娜的日记</p>
-    </div>
-
-    <!-- 其他本地图标 -->
-    <div class="quick-item">
-      <img src="images/dianyingtiantang.jpg" alt="电影天堂" onclick="openWebsite('http://www.dy2018.com')">
-      <p>电影天堂</p>
-    </div>
-    <div class="quick-item">
-      <img src="images/cilitiantang.jpg" alt="磁力天堂" onclick="openWebsite('https://www.clgod123.com')">
-      <p>磁力天堂</p>
-    </div>
-    <div class="quick-item">
-      <img src="images/ruanjian.png" alt="软件中心" onclick="openWebsite('https://pc.qq.com')">
-      <p>软件中心</p>
-    </div>
-
-
-
-    <div class="quick-item">
-      <img src="images/4k.jpg" alt="高清影视" onclick="openWebsite('https://www.4khdr.cn/forum-2-2.html')">
-      <p>高清影视</p>
-    </div>
-
-
-
-    <div class="quick-item">
-      <img src="images/icode.png" alt="编程平台" onclick="openWebsite('https://www.scratch-cw.top/')">
-      <p>编程平台</p>
-    </div>
- 
-
-  </div>
-
-  <!-- 搜索框 -->
-  <div class="search-bar">
-    <input id="search" type="text" placeholder="请输入搜索内容..." />
-    <div class="search-buttons">
-      <button class="baidu-btn" onclick="baiduSearch()">百度</button>
-      <button class="google-btn" onclick="googleSearch()">谷歌</button>
-    </div>
-  </div>
-
-  <script>
-    function baiduSearch() {
-      const query = document.getElementById("search").value;
-      if (query) {
-        window.open(`https://www.baidu.com/s?wd=${encodeURIComponent(query)}`, "_blank");
-      } else {
-        alert("请输入搜索内容！");
-      }
+  container.innerHTML = '';
+  if (items.length === 0) container.innerText = '无数据';
+  else {
+    for (const item of items) {
+      const div = document.createElement('div');
+      div.className = 'news';
+      div.innerHTML = `<h2>${item.title}</h2><p><b>${item.country}</b> | ${item.date}</p><p>${item.description}</p>`;
+      container.appendChild(div);
     }
+  }
+}
 
-    function googleSearch() {
-      const query = document.getElementById("search").value;
-      if (query) {
-        window.open(`https://www.google.com/search?q=${encodeURIComponent(query)}`, "_blank");
-      } else {
-        alert("请输入搜索内容！");
-      }
-    }
+async function loadCountries(data) {
+  const set = new Set(data.map(i => i.country));
+  const sel = document.getElementById('country-filter');
+  for (const c of set) {
+    const opt = document.createElement('option');
+    opt.value = c; opt.textContent = c;
+    sel.appendChild(opt);
+  }
+}
 
-    function openWebsite(url) {
-      window.open(url, "_blank");
-    }
+fetch('/api/news').then(r => r.json()).then(data => {
+  loadCountries(data);
+  loadNews();
+});
 
-    function updateTimeAndDate() {
-      const now = new Date();
-      const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      const date = now.toLocaleDateString([], { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
-      document.getElementById("time").textContent = time;
-      document.getElementById("date").textContent = date;
-    }
-    setInterval(updateTimeAndDate, 1000);
-    updateTimeAndDate();
-
-    document.getElementById("search").addEventListener("keydown", function(event) {
-      if (event.key === "Enter") {
-        baiduSearch();
-      }
-    });
-  </script>
+document.getElementById('country-filter').onchange = loadNews;
+document.getElementById('sort-mode').onchange = loadNews;
+</script>
 </body>
 </html>
+```
+
+---
+
+📄 worker/worker.js
+```js
+import rssParser from 'rss-parser';
+
+const parser = new rssParser();
+const FEEDS = [
+  { name: 'BBC', url: 'https://feeds.bbci.co.uk/news/rss.xml', country: 'UK' },
+  { name: 'NYTimes', url: 'https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml', country: 'USA' },
+];
+
+async function translate(text) {
+  return text; // 替换为翻译 API
+}
+
+export default {
+  async scheduled(_, env, ctx) {
+    const list = [];
+    for (const feed of FEEDS) {
+      const res = await parser.parseURL(feed.url);
+      for (const item of res.items.slice(0, 5)) {
+        list.push({
+          title: await translate(item.title),
+          description: await translate(item.contentSnippet || item.content || ''),
+          date: item.pubDate,
+          country: feed.country
+        });
+      }
+    }
+    await env.NEWS.put('latest', JSON.stringify(list));
+  },
+
+  async fetch(req, env) {
+    if (new URL(req.url).pathname === '/api/news') {
+      const data = await env.NEWS.get('latest');
+      return new Response(data || '[]', { headers: { 'Content-Type': 'application/json' } });
+    }
+    return fetch('public/index.html');
+  }
+};
+```
+
+---
+
+📄 wrangler.toml
+```toml
+name = "news-aggregator"
+type = "javascript"
+
+compatibility_date = "2025-06-01"
+
+[triggers]
+crons = ["*/10 * * * *"]
+
+[[kv_namespaces]]
+binding = "NEWS"
+id = "<YOUR_NAMESPACE_ID>"
+preview_id = "<YOUR_PREVIEW_ID>"
+```
+
+---
+
+📄 .gitignore
+```gitignore
+node_modules
+.env
+.DS_Store
+dist
+```
+
+---
+
+上传此项目至 GitHub 后即可部署到 Cloudflare Workers 和 Pages。要不要我为你打包 zip？
